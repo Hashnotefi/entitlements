@@ -1,0 +1,51 @@
+name: Slither Analysis
+
+on:
+  pull_request:
+    branches:
+      - '**'
+    types:
+      - opened
+      - synchronize
+      - edited
+
+jobs:
+  analyze-core:
+    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: forge install
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        id: slither
+        with:
+          target: '.'
+          slither-config: 'slither.config.json'
+          node-version: 16
+          fail-on: none
+          slither-args: --checklist
+
+      - name: Create/update checklist as PR comment
+        uses: actions/github-script@v6
+        env:
+          SLITHER_REPORT: ${{ steps.slither.outputs.stdout }}
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const script = require('.github/scripts/push_comment_to_pr.js');
+            const header = '# Slither report';
+            const body = process.env.SLITHER_REPORT;
+            const comment = [header, body].join('\n');
+            await script({ github, context, header, body });

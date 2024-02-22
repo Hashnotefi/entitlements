@@ -1,0 +1,42 @@
+name: Upload Coverage
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Coverage
+        run: forge coverage --report lcov
+
+      - name: Install LCOV
+        run: sudo apt-get install -y lcov
+
+      - name: Prune Coverage
+        run: lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/**/*' 'script/**/*'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: .
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+          files: ./lcov.info.pruned
+          name: settlements-coverage
+          verbose: true

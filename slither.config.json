@@ -1,0 +1,12 @@
+{
+  "detectors_to_exclude": "timestamp,naming-convention,pragma,solc-version,uninitialized-local",
+  "filter_paths": "lib/|test/|script/",
+  "exclude_informational": true,
+  "exclude_low": true,
+  "solc_remaps": [
+    "forge-std/=lib/forge-std/src/",
+    "solmate/=lib/solmate/src/",
+    "openzeppelin/=lib/openzeppelin-contracts/contracts/",
+    "openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/"
+  ]
+}
