@@ -1,35 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {Test} from "forge-std/Test.sol";
+import {BaseFixture} from "../fixtures/BaseFixture.t.sol";
+import {Role} from "../../src/config/enums.sol";
 
-import {RolesAuthority, Authority} from "../../src/core/RolesAuthority.sol";
-
-contract RolesAuthorityTest is Test {
-    RolesAuthority rolesAuthority;
+contract RolesAuthorityTest is BaseFixture {
+    Role role;
 
     function setUp() public {
-        rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
+        role = Role(0);
     }
 
     function testSetRoles() public {
-        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), 0));
+        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
 
-        rolesAuthority.setUserRole(address(0xBEEF), 0, true);
-        assertTrue(rolesAuthority.doesUserHaveRole(address(0xBEEF), 0));
+        rolesAuthority.setUserRole(address(0xBEEF), role, true);
+        assertTrue(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
 
-        rolesAuthority.setUserRole(address(0xBEEF), 0, false);
-        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), 0));
+        rolesAuthority.setUserRole(address(0xBEEF), role, false);
+        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
     }
 
     function testSetRoleCapabilities() public {
-        assertFalse(rolesAuthority.doesRoleHaveCapability(0, address(0xCAFE), 0xBEEFCAFE));
+        assertFalse(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setRoleCapability(0, address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.doesRoleHaveCapability(0, address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
+        assertTrue(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setRoleCapability(0, address(0xCAFE), 0xBEEFCAFE, false);
-        assertFalse(rolesAuthority.doesRoleHaveCapability(0, address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, false);
+        assertFalse(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
     }
 
     function testSetPublicCapabilities() public {
@@ -45,19 +44,19 @@ contract RolesAuthorityTest is Test {
     function testCanCallWithAuthorizedRole() public {
         assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setUserRole(address(0xBEEF), 0, true);
+        rolesAuthority.setUserRole(address(0xBEEF), role, true);
         assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setRoleCapability(0, address(0xCAFE), 0xBEEFCAFE, true);
+        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
         assertTrue(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setRoleCapability(0, address(0xCAFE), 0xBEEFCAFE, false);
+        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, false);
         assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setRoleCapability(0, address(0xCAFE), 0xBEEFCAFE, true);
+        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
         assertTrue(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
 
-        rolesAuthority.setUserRole(address(0xBEEF), 0, false);
+        rolesAuthority.setUserRole(address(0xBEEF), role, false);
         assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
     }
 
@@ -71,28 +70,32 @@ contract RolesAuthorityTest is Test {
         assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
     }
 
-    function testSetRoles(address user, uint8 role) public {
-        assertFalse(rolesAuthority.doesUserHaveRole(user, role));
+    function testSetRoles(address _user, uint8 _role) public {
+        vm.assume(_role < 22);
 
-        rolesAuthority.setUserRole(user, role, true);
-        assertTrue(rolesAuthority.doesUserHaveRole(user, role));
+        assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
 
-        rolesAuthority.setUserRole(user, role, false);
-        assertFalse(rolesAuthority.doesUserHaveRole(user, role));
+        rolesAuthority.setUserRole(_user, Role(_role), true);
+        assertTrue(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
+
+        rolesAuthority.setUserRole(_user, Role(_role), false);
+        assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
     }
 
     function testSetRoleCapabilities(
-        uint8 role,
-        address target,
-        bytes4 functionSig
+        uint8 _role,
+        address _target,
+        bytes4 _functionSig
     ) public {
-        assertFalse(rolesAuthority.doesRoleHaveCapability(role, target, functionSig));
+        vm.assume(_role < 22);
 
-        rolesAuthority.setRoleCapability(role, target, functionSig, true);
-        assertTrue(rolesAuthority.doesRoleHaveCapability(role, target, functionSig));
+        assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
 
-        rolesAuthority.setRoleCapability(role, target, functionSig, false);
-        assertFalse(rolesAuthority.doesRoleHaveCapability(role, target, functionSig));
+        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
+        assertTrue(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
+
+        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, false);
+        assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
     }
 
     function testSetPublicCapabilities(address target, bytes4 functionSig) public {
@@ -106,27 +109,30 @@ contract RolesAuthorityTest is Test {
     }
 
     function testCanCallWithAuthorizedRole(
-        address user,
-        uint8 role,
-        address target,
-        bytes4 functionSig
+        address _user,
+        uint8 _role,
+        address _target,
+        bytes4 _functionSig
     ) public {
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
+        vm.assume(_user != address(0));
+        vm.assume(_role < 22);
 
-        rolesAuthority.setUserRole(user, role, true);
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
+        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
 
-        rolesAuthority.setRoleCapability(role, target, functionSig, true);
-        assertTrue(rolesAuthority.canCall(user, target, functionSig));
+        rolesAuthority.setUserRole(_user, Role(_role), true);
+        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
 
-        rolesAuthority.setRoleCapability(role, target, functionSig, false);
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
+        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
+        assertTrue(rolesAuthority.canCall(_user, _target, _functionSig));
 
-        rolesAuthority.setRoleCapability(role, target, functionSig, true);
-        assertTrue(rolesAuthority.canCall(user, target, functionSig));
+        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, false);
+        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
 
-        rolesAuthority.setUserRole(user, role, false);
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
+        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
+        assertTrue(rolesAuthority.canCall(_user, _target, _functionSig));
+
+        rolesAuthority.setUserRole(_user, Role(_role), false);
+        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
     }
 
     function testCanCallPublicCapability(
@@ -134,6 +140,8 @@ contract RolesAuthorityTest is Test {
         address target,
         bytes4 functionSig
     ) public {
+        vm.assume(user != address(0));
+
         assertFalse(rolesAuthority.canCall(user, target, functionSig));
 
         rolesAuthority.setPublicCapability(target, functionSig, true);

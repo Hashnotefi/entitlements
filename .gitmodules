@@ -1,10 +1,10 @@
 [submodule "lib/forge-std"]
-	# v1.5.6 set to commit e8a047e on branch master
+	# v1.5.6 set to commit 1d0766b on branch master
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-	branch = v1.5.6
+	branch = v1.7.6
 [submodule "lib/solmate"]
-	# set to commit 2001af4 on branch main
+	# set to commit c892309 on branch main
 	path = lib/solmate
 	url = https://github.com/transmissions11/solmate
 [submodule "lib/openzeppelin-contracts"]

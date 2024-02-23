@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-enum Roles {
+enum Role {
     Investor_MFFeederDomestic,
     Investor_MFFeederInternational,
     Investor_SDYFDomestic,
@@ -15,7 +15,7 @@ enum Roles {
     Investor_Reserve5,
     Custodian_Centralized,
     Custodian_Decentralized,
-    System_Manager,
+    System_FundAdmin,
     System_Token,
     System_Vault,
     System_Auction,

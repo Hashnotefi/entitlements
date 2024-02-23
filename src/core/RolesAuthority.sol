@@ -1,15 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {Auth, Authority} from "solmate/auth/Auth.sol";
+import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
+
+import {IAuthority} from "../interfaces/IAuthority.sol";
+import {ISanctions} from "../interfaces/ISanctions.sol";
+
+import "../config/enums.sol";
+import "../config/errors.sol";
 
 /// @notice Role based Authority that supports up to 256 roles.
-/// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
+/// @author dsshap (Hashnote)
+/// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-roles/blob/master/src/roles.sol)
-contract RolesAuthority is Auth, Authority {
+contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
+
+    /*///////////////////////////////////////////////////////////////
+                         State Variables V1
+    //////////////////////////////////////////////////////////////*/
+    address public owner;
+
+    bool private _paused;
+
+    address public sanctions;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
+    event OwnershipTransferred(address indexed user, address indexed newOwner);
 
     event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
 
@@ -17,11 +36,28 @@ contract RolesAuthority is Auth, Authority {
 
     event RoleCapabilityUpdated(uint8 indexed role, address indexed target, bytes4 indexed functionSig, bool enabled);
 
+    event SanctionsUpdated(address oldSanctions, address newSanctions);
+
+    event Paused(address account);
+
+    event Unpaused(address account);
+
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, Authority _authority) Auth(_owner, _authority) {}
+    constructor() {}
+
+    /*///////////////////////////////////////////////////////////////
+                            Initializer
+    //////////////////////////////////////////////////////////////*/
+
+    function initialize(address _owner, address _sanctions) external initializer {
+        if (_owner == address(0)) revert BadAddress();
+
+        owner = _owner;
+        sanctions = _sanctions;
+    }
 
     /*//////////////////////////////////////////////////////////////
                             ROLE/USER STORAGE
@@ -33,16 +69,27 @@ contract RolesAuthority is Auth, Authority {
 
     mapping(address => mapping(bytes4 => bytes32)) public getRolesWithCapability;
 
-    function doesUserHaveRole(address user, uint8 role) public view virtual returns (bool) {
-        return (uint256(getUserRoles[user]) >> role) & 1 != 0;
+    function _sanctioned(address _address) internal view returns (bool) {
+        if (_address == address(0)) revert BadAddress();
+
+        return sanctions != address(0) ? ISanctions(sanctions).isSanctioned(_address) : false;
+    }
+
+    function doesUserHaveRole(address user, Role role) public view virtual returns (bool) {
+        if (_paused) revert Unauthorized();
+        if (_sanctioned(user)) return false;
+
+        return (uint256(getUserRoles[user]) >> uint8(role)) & 1 != 0;
     }
 
     function doesRoleHaveCapability(
-        uint8 role,
+        Role role,
         address target,
         bytes4 functionSig
     ) public view virtual returns (bool) {
-        return (uint256(getRolesWithCapability[target][functionSig]) >> role) & 1 != 0;
+        if (_paused) revert Unauthorized();
+
+        return (uint256(getRolesWithCapability[target][functionSig]) >> uint8(role)) & 1 != 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -54,6 +101,9 @@ contract RolesAuthority is Auth, Authority {
         address target,
         bytes4 functionSig
     ) public view virtual override returns (bool) {
+        if (_paused) revert Unauthorized();
+        if (_sanctioned(user)) return false;
+
         return
             isCapabilityPublic[target][functionSig] ||
             bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
@@ -63,29 +113,37 @@ contract RolesAuthority is Auth, Authority {
                    ROLE CAPABILITY CONFIGURATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    function _isOwner() internal view {
+        if (msg.sender != owner) revert Unauthorized();
+    }
+
     function setPublicCapability(
         address target,
         bytes4 functionSig,
         bool enabled
-    ) public virtual requiresAuth {
+    ) public virtual {
+        _isOwner();
+
         isCapabilityPublic[target][functionSig] = enabled;
 
         emit PublicCapabilityUpdated(target, functionSig, enabled);
     }
 
     function setRoleCapability(
-        uint8 role,
+        Role role,
         address target,
         bytes4 functionSig,
         bool enabled
-    ) public virtual requiresAuth {
+    ) public virtual {
+        _isOwner();
+
         if (enabled) {
-            getRolesWithCapability[target][functionSig] |= bytes32(1 << role);
+            getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
         } else {
-            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << role);
+            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << uint8(role));
         }
 
-        emit RoleCapabilityUpdated(role, target, functionSig, enabled);
+        emit RoleCapabilityUpdated(uint8(role), target, functionSig, enabled);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -94,15 +152,85 @@ contract RolesAuthority is Auth, Authority {
 
     function setUserRole(
         address user,
-        uint8 role,
+        Role role,
         bool enabled
-    ) public virtual requiresAuth {
+    ) public virtual {
+        _isOwner();
+
         if (enabled) {
-            getUserRoles[user] |= bytes32(1 << role);
+            getUserRoles[user] |= bytes32(1 << uint8(role));
         } else {
-            getUserRoles[user] &= ~bytes32(1 << role);
+            getUserRoles[user] &= ~bytes32(1 << uint8(role));
         }
 
-        emit UserRoleUpdated(user, role, enabled);
+        emit UserRoleUpdated(user, uint8(role), enabled);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            PAUSE LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Pauses whitelist
+     * @dev reverts on any check of permissions preventing any movement of funds
+     *      between vault, auction, and option protocol
+     */
+    function pause() public {
+        _isOwner();
+
+        _paused = true;
+        emit Paused(msg.sender);
+    }
+
+    /**
+     * @notice Unpauses whitelist
+     */
+    function unpause() public {
+        _isOwner();
+
+        _paused = false;
+        emit Unpaused(msg.sender);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            SANCTIONS SETTER
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Sets the new oracle address
+     * @param _sanctions is the address of the new oracle
+     */
+    function setSanctions(address _sanctions) external {
+        _isOwner();
+
+        if (_sanctions == address(0)) revert BadAddress();
+
+        emit SanctionsUpdated(sanctions, _sanctions);
+
+        sanctions = _sanctions;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            OWNERSHIP LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function transferOwnership(address newOwner) public {
+        _isOwner();
+
+        owner = newOwner;
+
+        emit OwnershipTransferred(msg.sender, newOwner);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                    Override Upgrade Permission
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Upgradable by the owner.
+     *
+     */
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _isOwner();
     }
 }
