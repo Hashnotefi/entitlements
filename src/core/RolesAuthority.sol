@@ -15,7 +15,6 @@ import "../config/errors.sol";
 /// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-roles/blob/master/src/roles.sol)
 contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
-
     /*///////////////////////////////////////////////////////////////
                          State Variables V1
     //////////////////////////////////////////////////////////////*/
@@ -82,11 +81,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         return (uint256(getUserRoles[user]) >> uint8(role)) & 1 != 0;
     }
 
-    function doesRoleHaveCapability(
-        Role role,
-        address target,
-        bytes4 functionSig
-    ) public view virtual returns (bool) {
+    function doesRoleHaveCapability(Role role, address target, bytes4 functionSig) public view virtual returns (bool) {
         if (_paused) revert Unauthorized();
 
         return (uint256(getRolesWithCapability[target][functionSig]) >> uint8(role)) & 1 != 0;
@@ -96,17 +91,12 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                            AUTHORIZATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function canCall(
-        address user,
-        address target,
-        bytes4 functionSig
-    ) public view virtual override returns (bool) {
+    function canCall(address user, address target, bytes4 functionSig) public view virtual override returns (bool) {
         if (_paused) revert Unauthorized();
         if (_sanctioned(user)) return false;
 
-        return
-            isCapabilityPublic[target][functionSig] ||
-            bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+        return isCapabilityPublic[target][functionSig]
+            || bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -117,11 +107,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         if (msg.sender != owner) revert Unauthorized();
     }
 
-    function setPublicCapability(
-        address target,
-        bytes4 functionSig,
-        bool enabled
-    ) public virtual {
+    function setPublicCapability(address target, bytes4 functionSig, bool enabled) public virtual {
         _isOwner();
 
         isCapabilityPublic[target][functionSig] = enabled;
@@ -129,12 +115,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         emit PublicCapabilityUpdated(target, functionSig, enabled);
     }
 
-    function setRoleCapability(
-        Role role,
-        address target,
-        bytes4 functionSig,
-        bool enabled
-    ) public virtual {
+    function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
         _isOwner();
 
         if (enabled) {
@@ -150,11 +131,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                        USER ROLE ASSIGNMENT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function setUserRole(
-        address user,
-        Role role,
-        bool enabled
-    ) public virtual {
+    function setUserRole(address user, Role role, bool enabled) public virtual {
         _isOwner();
 
         if (enabled) {

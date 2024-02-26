@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {RolesAuthority} from "../../src/core/RolesAuthority.sol";
 import {RolesAuthorityProxy} from "../../src/core/RolesAuthorityProxy.sol";
+import {Role} from "../../src/config/enums.sol";
 
 import {MockSanctions} from "../mocks/MockSanctions.sol";
 
@@ -15,9 +16,17 @@ abstract contract BaseFixture is Test {
     RolesAuthority public rolesAuthority;
     MockSanctions internal sanctions;
 
+    Role role;
+
     address public alice;
     address public charlie;
     address public bob;
+
+    // constants for testing
+    address internal constant USER = address(0xBEEF);
+    address internal constant TARGET = address(0xCAFE);
+
+    bytes4 internal constant FUNCTION_SIG = bytes4(0xBEEFCAFE);
 
     constructor() {
         charlie = address(0xcccc);
@@ -29,13 +38,15 @@ abstract contract BaseFixture is Test {
         alice = address(0xaaaa);
         vm.label(alice, "Alice");
 
+        vm.label(USER, "User");
+        vm.label(TARGET, "Target");
+
         sanctions = new MockSanctions();
 
         address implementation = address(new RolesAuthority());
         bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this), address(sanctions));
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);
-
 
         // make sure timestamp is not 0
         vm.warp(0xffff);
