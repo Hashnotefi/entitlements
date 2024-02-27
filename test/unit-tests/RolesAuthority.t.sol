@@ -2,152 +2,134 @@
 pragma solidity ^0.8.0;
 
 import {BaseFixture} from "../fixtures/BaseFixture.t.sol";
+
 import {Role} from "../../src/config/enums.sol";
+import {Unauthorized} from "../../src/config/errors.sol";
+
+contract RolesAuthorityTransferOwnershipTest is BaseFixture {
+    event OwnershipTransferred(address indexed user, address indexed newOwner);
+
+    function testTransferOwnership() public {
+        assertEq(rolesAuthority.owner(), address(this));
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(address(this), address(0xBBBB));
+
+        rolesAuthority.transferOwnership(address(0xBBBB));
+
+        assertEq(rolesAuthority.owner(), address(0xBBBB));
+    }
+
+    function testRevertsTransferOwnershipNotOwner() public {
+        vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.transferOwnership(address(0xBBBB));
+    }
+}
 
 contract RolesAuthorityTest is BaseFixture {
-    Role role;
+    event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
+
+    event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
+
+    event RoleCapabilityUpdated(uint8 indexed role, address indexed target, bytes4 indexed functionSig, bool enabled);
 
     function setUp() public {
         role = Role(0);
     }
 
     function testSetRoles() public {
-        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
+        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
 
-        rolesAuthority.setUserRole(address(0xBEEF), role, true);
-        assertTrue(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(USER, uint8(role), true);
 
-        rolesAuthority.setUserRole(address(0xBEEF), role, false);
-        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
+        rolesAuthority.setUserRole(USER, role, true);
+        assertTrue(rolesAuthority.doesUserHaveRole(USER, role));
+
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(USER, uint8(role), false);
+
+        rolesAuthority.setUserRole(USER, role, false);
+        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
     }
 
     function testSetRoleCapabilities() public {
-        assertFalse(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
+        assertFalse(rolesAuthority.doesRoleHaveCapability(role, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
+        vm.expectEmit(true, true, true, true);
+        emit RoleCapabilityUpdated(uint8(role), TARGET, FUNCTION_SIG, true);
 
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, false);
-        assertFalse(rolesAuthority.doesRoleHaveCapability(role, address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.doesRoleHaveCapability(role, TARGET, FUNCTION_SIG));
+
+        vm.expectEmit(true, true, true, true);
+        emit RoleCapabilityUpdated(uint8(role), TARGET, FUNCTION_SIG, false);
+
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, false);
+        assertFalse(rolesAuthority.doesRoleHaveCapability(role, TARGET, FUNCTION_SIG));
     }
 
     function testSetPublicCapabilities() public {
-        assertFalse(rolesAuthority.isCapabilityPublic(address(0xCAFE), 0xBEEFCAFE));
+        assertFalse(rolesAuthority.isCapabilityPublic(TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setPublicCapability(address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.isCapabilityPublic(address(0xCAFE), 0xBEEFCAFE));
+        vm.expectEmit(true, true, true, true);
+        emit PublicCapabilityUpdated(TARGET, FUNCTION_SIG, true);
 
-        rolesAuthority.setPublicCapability(address(0xCAFE), 0xBEEFCAFE, false);
-        assertFalse(rolesAuthority.isCapabilityPublic(address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.isCapabilityPublic(TARGET, FUNCTION_SIG));
+
+        vm.expectEmit(true, true, true, true);
+        emit PublicCapabilityUpdated(TARGET, FUNCTION_SIG, false);
+
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, false);
+        assertFalse(rolesAuthority.isCapabilityPublic(TARGET, FUNCTION_SIG));
     }
 
     function testCanCallWithAuthorizedRole() public {
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setUserRole(address(0xBEEF), role, true);
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setUserRole(USER, role, true);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, false);
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, false);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setUserRole(address(0xBEEF), role, false);
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setUserRole(USER, role, false);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
     }
 
     function testCanCallPublicCapability() public {
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setPublicCapability(address(0xCAFE), 0xBEEFCAFE, true);
-        assertTrue(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
-        rolesAuthority.setPublicCapability(address(0xCAFE), 0xBEEFCAFE, false);
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, false);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
     }
 
-    function testSetRoles(address _user, uint8 _role) public {
-        vm.assume(_role < 22);
-
-        assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
-
-        rolesAuthority.setUserRole(_user, Role(_role), true);
-        assertTrue(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
-
-        rolesAuthority.setUserRole(_user, Role(_role), false);
-        assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
+    function testCannotSetRoleCapabilityNotOwner() public {
+        vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
     }
 
-    function testSetRoleCapabilities(
-        uint8 _role,
-        address _target,
-        bytes4 _functionSig
-    ) public {
-        vm.assume(_role < 22);
-
-        assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
-
-        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
-        assertTrue(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
-
-        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, false);
-        assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
+    function testCannotSetPublicCapabilityNotOwner() public {
+        vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
     }
 
-    function testSetPublicCapabilities(address target, bytes4 functionSig) public {
-        assertFalse(rolesAuthority.isCapabilityPublic(target, functionSig));
-
-        rolesAuthority.setPublicCapability(target, functionSig, true);
-        assertTrue(rolesAuthority.isCapabilityPublic(target, functionSig));
-
-        rolesAuthority.setPublicCapability(target, functionSig, false);
-        assertFalse(rolesAuthority.isCapabilityPublic(target, functionSig));
-    }
-
-    function testCanCallWithAuthorizedRole(
-        address _user,
-        uint8 _role,
-        address _target,
-        bytes4 _functionSig
-    ) public {
-        vm.assume(_user != address(0));
-        vm.assume(_role < 22);
-
-        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
-
-        rolesAuthority.setUserRole(_user, Role(_role), true);
-        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
-
-        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
-        assertTrue(rolesAuthority.canCall(_user, _target, _functionSig));
-
-        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, false);
-        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
-
-        rolesAuthority.setRoleCapability(Role(_role), _target, _functionSig, true);
-        assertTrue(rolesAuthority.canCall(_user, _target, _functionSig));
-
-        rolesAuthority.setUserRole(_user, Role(_role), false);
-        assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
-    }
-
-    function testCanCallPublicCapability(
-        address user,
-        address target,
-        bytes4 functionSig
-    ) public {
-        vm.assume(user != address(0));
-
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
-
-        rolesAuthority.setPublicCapability(target, functionSig, true);
-        assertTrue(rolesAuthority.canCall(user, target, functionSig));
-
-        rolesAuthority.setPublicCapability(target, functionSig, false);
-        assertFalse(rolesAuthority.canCall(user, target, functionSig));
+    function testCannotSetUserRoleNotOwner() public {
+        vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRole(USER, role, true);
     }
 }

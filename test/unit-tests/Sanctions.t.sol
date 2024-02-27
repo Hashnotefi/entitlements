@@ -2,26 +2,30 @@
 pragma solidity ^0.8.0;
 
 import {BaseFixture} from "../fixtures/BaseFixture.t.sol";
-import {Role} from "../../src/config/enums.sol";
 
-import "../../src/config/errors.sol";
+import {Role} from "../../src/config/enums.sol";
+import {BadAddress, Unauthorized} from "../../src/config/errors.sol";
 
 contract SanctionsTest is BaseFixture {
-    Role role;
+    event SanctionsUpdated(address oldSanctions, address newSanctions);
 
     function setUp() public {
         role = Role(0);
-        rolesAuthority.setUserRole(address(0xBEEF), role, true);
-        sanctions.setSanctioned(address(0xBEEF), true);
+        rolesAuthority.setUserRole(USER, role, true);
+        sanctions.setSanctioned(USER, true);
     }
 
     function testCannotGetUserRole() public {
-        assertFalse(rolesAuthority.doesUserHaveRole(address(0xBEEF), role));
+        assertTrue(sanctions.isSanctioned(USER));
+
+        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
     }
 
     function testCannotCall() public {
-        rolesAuthority.setRoleCapability(role, address(0xCAFE), 0xBEEFCAFE, true);
+        assertTrue(sanctions.isSanctioned(USER));
 
-        assertFalse(rolesAuthority.canCall(address(0xBEEF), address(0xCAFE), 0xBEEFCAFE));
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
     }
 }
