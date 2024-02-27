@@ -15,28 +15,6 @@ contract SanctionsTest is BaseFixture {
         sanctions.setSanctioned(USER, true);
     }
 
-    function testSetSanctions() public {
-        assertEq(rolesAuthority.sanctions(), address(sanctions));
-
-        vm.expectEmit(true, true, true, true);
-        emit SanctionsUpdated(address(sanctions), address(0xBBBB));
-
-        rolesAuthority.setSanctions(address(0xBBBB));
-
-        assertEq(rolesAuthority.sanctions(), address(0xBBBB));
-    }
-
-    function testRevertsSetSanctionsToZeroAddress() public {
-        vm.expectRevert(BadAddress.selector);
-        rolesAuthority.setSanctions(address(0));
-    }
-
-    function testRevertsSetSanctionsNotOwner() public {
-        vm.prank(address(0xAAAA));
-        vm.expectRevert(Unauthorized.selector);
-        rolesAuthority.setSanctions(address(0xBBBB));
-    }
-
     function testCannotGetUserRole() public {
         assertTrue(sanctions.isSanctioned(USER));
 

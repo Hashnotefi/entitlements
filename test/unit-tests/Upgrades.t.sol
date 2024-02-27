@@ -17,8 +17,8 @@ contract UpgradesTest is Test {
     RolesAuthority public rolesAuthorityImplementation;
 
     function setUp() public {
-        rolesAuthorityImplementation = new RolesAuthority();
-        bytes memory data = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this), SANCTIONS_ADDR);
+        rolesAuthorityImplementation = new RolesAuthority(SANCTIONS_ADDR);
+        bytes memory data = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
 
         rolesAuthority = RolesAuthority(address(new RolesAuthorityProxy(address(rolesAuthorityImplementation), data)));
     }
@@ -33,7 +33,7 @@ contract UpgradesTest is Test {
 
     function testProxyIsInitialized() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        rolesAuthority.initialize(address(this), SANCTIONS_ADDR);
+        rolesAuthority.initialize(address(this));
     }
 
     function testUpgrade() public {
