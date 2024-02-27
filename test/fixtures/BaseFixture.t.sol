@@ -16,7 +16,7 @@ abstract contract BaseFixture is Test {
     RolesAuthority public rolesAuthority;
     MockSanctions internal sanctions;
 
-    Role role;
+    Role internal role;
 
     address public alice;
     address public charlie;
