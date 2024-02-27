@@ -73,12 +73,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
     mapping(address => mapping(bytes4 => bytes32)) public getRolesWithCapability;
 
-    // function _sanctioned(address _address) internal view returns (bool) {
-    //     if (_address == address(0)) revert BadAddress();
-
-    //     return sanctions != address(0) ? ISanctions(sanctions).isSanctioned(_address) : false;
-    // }
-
     function doesUserHaveRole(address user, Role role) public view virtual returns (bool) {
         if (_paused) revert Unauthorized();
         if (sanctions.isSanctioned(user)) return false;
