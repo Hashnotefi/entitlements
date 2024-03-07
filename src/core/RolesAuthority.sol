@@ -75,7 +75,9 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
     function doesUserHaveRole(address user, Role role) public view virtual returns (bool) {
         if (_paused) revert Unauthorized();
-        if (sanctions.isSanctioned(user)) return false;
+
+        if (uint8(role) <= uint8(Role.Investor_Reserve5))
+            if (sanctions.isSanctioned(user)) return false;
 
         return (uint256(getUserRoles[user]) >> uint8(role)) & 1 != 0;
     }

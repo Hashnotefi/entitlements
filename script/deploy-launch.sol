@@ -15,7 +15,7 @@ contract Deploy is Script {
         console.log("\n---- START ----");
 
         address implementation = address(new RolesAuthority(address(vm.envAddress("Sanctions"))));
-        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
+        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, vm.envAddress("Owner"));
         address proxy = address(new RolesAuthorityProxy(implementation, initData));
 
         console.log("RolesAuthority: \t\t", implementation);
