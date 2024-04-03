@@ -10,4 +10,6 @@ interface IAuthority {
     function canCall(address user, address target, bytes4 functionSig) external view returns (bool);
 
     function doesUserHaveRole(address user, Role role) external view returns (bool);
+
+    function getUserRoles(address user) external view returns (bytes32);
 }
