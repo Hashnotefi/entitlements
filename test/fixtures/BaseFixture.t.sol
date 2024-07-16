@@ -43,7 +43,8 @@ abstract contract BaseFixture is Test {
 
         sanctions = new MockSanctions();
 
-        address implementation = address(new RolesAuthority(address(sanctions)));
+        // TODO: change to valid addresses
+        address implementation = address(new RolesAuthority(address(sanctions), address(0x1), address(0x1)));
         bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);

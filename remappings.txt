@@ -2,3 +2,4 @@ forge-std/=lib/forge-std/src/
 solmate/=lib/solmate/src/
 openzeppelin/=lib/openzeppelin-contracts/contracts/
 openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+axelar/=lib/axelar-gmp-sdk-solidity/contracts
