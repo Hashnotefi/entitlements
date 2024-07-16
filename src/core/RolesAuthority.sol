@@ -193,7 +193,12 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     // TODO: maybe think of a better way to handle broadcasting different functions
-    function broadcast(bytes4 _functionSignature, bytes calldata _payload, string[] calldata _chains, string[] calldata _addresses) external payable {
+    function broadcast(
+        bytes4 _functionSignature,
+        bytes calldata _payload,
+        string[] calldata _chains,
+        string[] calldata _addresses
+    ) external payable {
         _isOwner();
 
         if (msg.value == 0) revert InsufficientGas();
