@@ -8,6 +8,7 @@ import {RolesAuthorityProxy} from "../../src/core/RolesAuthorityProxy.sol";
 import {Role} from "../../src/config/enums.sol";
 
 import {MockSanctions} from "../mocks/MockSanctions.sol";
+import {MockMessenger} from "../mocks/MockMessenger.sol";
 
 /**
  * helper contract with shared logic for fixtures to inherit
@@ -15,6 +16,7 @@ import {MockSanctions} from "../mocks/MockSanctions.sol";
 abstract contract BaseFixture is Test {
     RolesAuthority public rolesAuthority;
     MockSanctions internal sanctions;
+    MockMessenger internal messenger;
 
     Role internal role;
 
@@ -42,8 +44,9 @@ abstract contract BaseFixture is Test {
         vm.label(TARGET, "Target");
 
         sanctions = new MockSanctions();
+        messenger = new MockMessenger();
 
-        address implementation = address(new RolesAuthority(address(sanctions)));
+        address implementation = address(new RolesAuthority(address(sanctions), address(messenger)));
         bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, charlie);
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);

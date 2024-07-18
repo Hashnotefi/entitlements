@@ -6,6 +6,7 @@ import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 
 import {IAuthority} from "../interfaces/IAuthority.sol";
 import {ISanctions} from "../interfaces/ISanctions.sol";
+import {IAxelarMessenger} from "../interfaces/IAxelarMessenger.sol";
 
 import "../config/enums.sol";
 import "../config/errors.sol";
@@ -20,6 +21,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     ISanctions public immutable sanctions;
+    IAxelarMessenger public immutable messenger;
 
     /*///////////////////////////////////////////////////////////////
                          State Variables V1
@@ -47,10 +49,12 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _sanctions) {
+    constructor(address _sanctions, address _messenger) {
         if (_sanctions == address(0)) revert BadAddress();
+        if (_messenger == address(0)) revert BadAddress();
 
         sanctions = ISanctions(_sanctions);
+        messenger = IAxelarMessenger(_messenger);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -147,6 +151,8 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         }
 
         emit UserRoleUpdated(user, uint8(role), enabled);
+
+        if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
     }
 
     /*//////////////////////////////////////////////////////////////
