@@ -105,12 +105,16 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                    ROLE CAPABILITY CONFIGURATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _isOwner() internal view {
+    function _assertOwner() internal view {
         if (msg.sender != owner) revert Unauthorized();
     }
 
+    function _assertFundAdmin() internal view {
+        if (!doesUserHaveRole(msg.sender, Role.System_FundAdmin)) revert Unauthorized();
+    }
+
     function setPublicCapability(address target, bytes4 functionSig, bool enabled) public virtual {
-        _isOwner();
+        _assertFundAdmin();
 
         isCapabilityPublic[target][functionSig] = enabled;
 
@@ -118,7 +122,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
-        _isOwner();
+        (role == Role.System_FundAdmin) ? _assertOwner() : _assertFundAdmin();
 
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
@@ -134,7 +138,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     function setUserRole(address user, Role role, bool enabled) public virtual {
-        _isOwner();
+        (role == Role.System_FundAdmin) ? _assertOwner() : _assertFundAdmin();
 
         if (enabled) {
             getUserRoles[user] |= bytes32(1 << uint8(role));
@@ -150,22 +154,22 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Pauses whitelist
+     * @notice Pauses
      * @dev reverts on any check of permissions preventing any movement of funds
      *      between vault, auction, and option protocol
      */
     function pause() public {
-        _isOwner();
+        _assertFundAdmin();
 
         _paused = true;
         emit Paused(msg.sender);
     }
 
     /**
-     * @notice Unpauses whitelist
+     * @notice Unpauses
      */
     function unpause() public {
-        _isOwner();
+        _assertOwner();
 
         _paused = false;
         emit Unpaused(msg.sender);
@@ -176,7 +180,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     function transferOwnership(address newOwner) public {
-        _isOwner();
+        _assertOwner();
 
         owner = newOwner;
 
@@ -192,6 +196,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
      *
      */
     function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
-        _isOwner();
+        _assertOwner();
     }
 }

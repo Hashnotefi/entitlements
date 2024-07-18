@@ -10,11 +10,12 @@ contract RolesAuthorityTransferOwnershipTest is BaseFixture {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
 
     function testTransferOwnership() public {
-        assertEq(rolesAuthority.owner(), address(this));
+        assertEq(rolesAuthority.owner(), charlie);
 
         vm.expectEmit(true, true, true, true);
-        emit OwnershipTransferred(address(this), address(0xBBBB));
+        emit OwnershipTransferred(charlie, address(0xBBBB));
 
+        vm.prank(charlie);
         rolesAuthority.transferOwnership(address(0xBBBB));
 
         assertEq(rolesAuthority.owner(), address(0xBBBB));

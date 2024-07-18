@@ -24,12 +24,13 @@ contract PauserTest is BaseFixture {
         rolesAuthority.pause();
     }
 
-    function testUnpause() public {
+    function testUnpause1() public {
         rolesAuthority.pause();
 
         vm.expectEmit(true, true, true, true);
-        emit Unpaused(address(this));
+        emit Unpaused(charlie);
 
+        vm.prank(charlie);
         rolesAuthority.unpause();
     }
 
@@ -60,6 +61,7 @@ contract PauserTest is BaseFixture {
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.doesUserHaveRole(USER, role);
 
+        vm.prank(charlie);
         rolesAuthority.unpause();
         assertTrue(rolesAuthority.doesUserHaveRole(USER, role));
     }
@@ -70,6 +72,7 @@ contract PauserTest is BaseFixture {
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.doesRoleHaveCapability(role, TARGET, FUNCTION_SIG);
 
+        vm.prank(charlie);
         rolesAuthority.unpause();
         assertTrue(rolesAuthority.doesRoleHaveCapability(role, TARGET, FUNCTION_SIG));
     }
@@ -80,6 +83,7 @@ contract PauserTest is BaseFixture {
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG);
 
+        vm.prank(charlie);
         rolesAuthority.unpause();
         assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
     }

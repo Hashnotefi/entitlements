@@ -44,9 +44,12 @@ abstract contract BaseFixture is Test {
         sanctions = new MockSanctions();
 
         address implementation = address(new RolesAuthority(address(sanctions)));
-        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
+        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, charlie);
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);
+
+        vm.prank(charlie);
+        rolesAuthority.setUserRole(address(this), Role.System_FundAdmin, true);
 
         // make sure timestamp is not 0
         vm.warp(0xffff);
