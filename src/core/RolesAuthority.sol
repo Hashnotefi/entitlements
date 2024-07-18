@@ -4,9 +4,6 @@ pragma solidity ^0.8.0;
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 
-import {IAxelarGateway} from "axelar/interfaces/IAxelarGateway.sol";
-import {IAxelarGasService} from "axelar/interfaces/IAxelarGasService.sol";
-
 import {IAuthority} from "../interfaces/IAuthority.sol";
 import {ISanctions} from "../interfaces/ISanctions.sol";
 
@@ -24,15 +21,14 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
     ISanctions public immutable sanctions;
 
-    IAxelarGateway public immutable gateway;
-    IAxelarGasService public immutable gasService;
-
     /*///////////////////////////////////////////////////////////////
                          State Variables V1
     //////////////////////////////////////////////////////////////*/
     address public owner;
 
     bool private _paused;
+
+    uint256[20] private __gap;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -53,14 +49,10 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _sanctions, address _gateway, address _gasReceiver) {
+    constructor(address _sanctions) {
         if (_sanctions == address(0)) revert BadAddress();
-        if (_gateway == address(0)) revert BadAddress();
-        if (_gasReceiver == address(0)) revert BadAddress();
 
         sanctions = ISanctions(_sanctions);
-        gasService = IAxelarGasService(_gasReceiver);
-        gateway = IAxelarGateway(_gateway);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -162,60 +154,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     function setUserRole(address user, Role role, bool enabled) public virtual {
         _isOwner();
         _setUserRole(user, role, enabled);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        MULTI-CHAIN EXECUTION LOGIC
-    //////////////////////////////////////////////////////////////*/
-    function execute(bytes32 _commandId, string calldata _chain, string calldata _address, bytes calldata _payload) external {
-        bytes32 payloadHash = keccak256(_payload);
-        if (!gateway.validateContractCall(_commandId, _chain, _address, payloadHash)) {
-            revert NotPermissioned();
-        }
-
-        // Decode the payload to get the function signature and data
-        (bytes4 signature, bytes memory data) = abi.decode(_payload, (bytes4, bytes));
-
-        // Decode the data and call the appropriate function based on the signature
-        if (signature == this.setUserRole.selector) {
-            (address user, Role role, bool enabled) = abi.decode(data, (address, Role, bool));
-
-            _setUserRole(user, role, enabled);
-        } else if (signature == this.setRoleCapability.selector) {
-            (Role role, address target, bytes4 functionSig, bool enabled) = abi.decode(data, (Role, address, bytes4, bool));
-
-            _setRoleCapability(role, target, functionSig, enabled);
-        } else {
-            (address target, bytes4 functionSig, bool enabled) = abi.decode(data, (address, bytes4, bool));
-
-            _setPublicCapability(target, functionSig, enabled);
-        }
-    }
-
-    // TODO: maybe think of a better way to handle broadcasting different functions
-    function broadcast(
-        bytes4 _functionSignature,
-        bytes calldata _payload,
-        string[] calldata _chains,
-        string[] calldata _addresses
-    ) external payable {
-        _isOwner();
-
-        if (msg.value == 0) revert InsufficientGas();
-
-        // Encode the payload
-        bytes memory payload = abi.encode(_functionSignature, _payload);
-
-        for (uint256 i = 0; i < _chains.length;) {
-            gasService.payNativeGasForContractCall{value: msg.value}(
-                address(this), _chains[i], _addresses[i], payload, msg.sender
-            );
-            gateway.callContract(_chains[i], _addresses[i], payload);
-
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     /*//////////////////////////////////////////////////////////////
