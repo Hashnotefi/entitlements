@@ -5,8 +5,8 @@ import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 
 import {IAuthority} from "../interfaces/IAuthority.sol";
-import {ISanctions} from "../interfaces/ISanctions.sol";
 import {IAxelarMessenger} from "../interfaces/IAxelarMessenger.sol";
+import {ISanctions} from "../interfaces/ISanctions.sol";
 
 import "../config/enums.sol";
 import "../config/errors.sol";
@@ -51,7 +51,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
     constructor(address _sanctions, address _messenger) {
         if (_sanctions == address(0)) revert BadAddress();
-        if (_messenger == address(0)) revert BadAddress();
 
         sanctions = ISanctions(_sanctions);
         messenger = IAxelarMessenger(_messenger);
@@ -126,7 +125,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
-        (role == Role.System_FundAdmin) ? _assertOwner() : _assertFundAdmin();
+        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
 
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
@@ -142,7 +141,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     function setUserRole(address user, Role role, bool enabled) public virtual {
-        (role == Role.System_FundAdmin) ? _assertOwner() : _assertFundAdmin();
+        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
 
         if (enabled) {
             getUserRoles[user] |= bytes32(1 << uint8(role));
@@ -169,6 +168,8 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
         _paused = true;
         emit Paused(msg.sender);
+
+        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
     }
 
     /**
