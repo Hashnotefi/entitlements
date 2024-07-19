@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {BaseFixture} from "../fixtures/BaseFixture.t.sol";
+import {RolesAuthority, BaseFixture} from "../fixtures/BaseFixture.t.sol";
 
 import {Role} from "../../src/config/enums.sol";
 import {Unauthorized} from "../../src/config/errors.sol";
@@ -29,6 +29,8 @@ contract RolesAuthorityTransferOwnershipTest is BaseFixture {
 }
 
 contract RolesAuthorityTest is BaseFixture {
+    event Broadcast(bytes payload);
+
     event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
 
     event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
@@ -53,6 +55,13 @@ contract RolesAuthorityTest is BaseFixture {
 
         rolesAuthority.setUserRole(USER, role, false);
         assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
+    }
+
+    function testSetRoleBroadcasts() public {
+        vm.expectEmit(true, true, true, true);
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRole.selector, USER, uint8(role), true));
+
+        rolesAuthority.setUserRole(USER, role, true);
     }
 
     function testSetRoleCapabilities() public {

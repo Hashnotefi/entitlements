@@ -4,5 +4,9 @@ pragma solidity ^0.8.0;
 import {IAxelarMessenger} from "../../src/interfaces/IAxelarMessenger.sol";
 
 contract MockMessenger is IAxelarMessenger {
-    function broadcast(bytes calldata payload) external view {}
+    event Broadcast(bytes payload);
+
+    function broadcast(bytes calldata payload) external {
+        emit Broadcast(payload);
+    }
 }
