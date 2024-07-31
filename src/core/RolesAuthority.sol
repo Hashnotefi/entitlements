@@ -140,9 +140,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                        USER ROLE ASSIGNMENT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function setUserRole(address user, Role role, bool enabled) public virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
-
+    function _setUserRole(address user, Role role, bool enabled) internal virtual {
         if (enabled) {
             getUserRoles[user] |= bytes32(1 << uint8(role));
         } else {
@@ -150,8 +148,36 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         }
 
         emit UserRoleUpdated(user, uint8(role), enabled);
+    }
+
+    function setUserRole(address user, Role role, bool enabled) external virtual {
+        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
+
+        _setUserRole(user, role, enabled);
 
         if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
+    }
+
+    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled, bool broadcast)
+        external
+        virtual
+    {
+        _assertFundAdmin();
+
+        uint256 length = users.length;
+        if (length == 0 || length != roles.length || length != enabled.length) revert InvalidArrayLength();
+
+        for (uint256 i; i < length;) {
+            if (uint8(roles[i]) <= uint8(Role.Investor_Reserve5)) revert Unauthorized();
+
+            _setUserRole(users[i], roles[i], enabled[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (broadcast && address(messenger) != address(0)) messenger.broadcast(msg.data);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -180,6 +206,8 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
 
         _paused = false;
         emit Unpaused(msg.sender);
+
+        // Not broadcasting, each chain will be unpaused individually
     }
 
     /*//////////////////////////////////////////////////////////////

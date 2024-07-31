@@ -24,7 +24,7 @@ contract PauserTest is BaseFixture {
         rolesAuthority.pause();
     }
 
-    function testUnpause1() public {
+    function testUnpause() public {
         rolesAuthority.pause();
 
         vm.expectEmit(true, true, true, true);
