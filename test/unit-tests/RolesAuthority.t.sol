@@ -227,24 +227,26 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
         vm.expectEmit(true, true, true, true);
         emit UserRoleUpdated(users[1], uint8(roles[1]), true);
 
+        vm.expectEmit(true, true, true, true);
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled));
+
         vm.recordLogs();
 
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
 
         assertTrue(rolesAuthority.doesUserHaveRole(users[0], roles[0]));
         assertTrue(rolesAuthority.doesUserHaveRole(users[1], roles[1]));
 
-        // only role updated logs should be emitted
-        assertEq(vm.getRecordedLogs().length, 2);
+        assertEq(vm.getRecordedLogs().length, 3);
     }
 
     function testBroadcasts() public {
         vm.expectEmit(true, true, true, true);
-        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled, true));
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled));
 
         vm.recordLogs();
 
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, true);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
 
         // logs + broadcast should be emitted
         assertEq(vm.getRecordedLogs().length, 3);
@@ -254,18 +256,18 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
         users = new address[](1);
 
         vm.expectRevert(InvalidArrayLength.selector);
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }
 
     function testCannotCallNotFundAdmin() public {
         vm.prank(address(0xAAAA));
         vm.expectRevert(Unauthorized.selector);
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }
 
     function testCannotCallByOwner() public {
         vm.prank(charlie);
         vm.expectRevert(Unauthorized.selector);
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }
 }

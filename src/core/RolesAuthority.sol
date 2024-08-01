@@ -158,10 +158,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
     }
 
-    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled, bool broadcast)
-        external
-        virtual
-    {
+    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
         _assertFundAdmin();
 
         uint256 length = users.length;
@@ -177,7 +174,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
             }
         }
 
-        if (broadcast && address(messenger) != address(0)) messenger.broadcast(msg.data);
+        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
     }
 
     /*//////////////////////////////////////////////////////////////

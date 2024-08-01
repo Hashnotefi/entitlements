@@ -92,6 +92,6 @@ contract RolesAuthorityTest is BaseFixture {
         enabled[0] = true;
 
         vm.expectRevert(Unauthorized.selector);
-        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }
 }
