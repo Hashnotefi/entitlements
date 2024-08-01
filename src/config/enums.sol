@@ -23,5 +23,6 @@ enum Role {
     System_Oracle,
     System_MarginEngine,
     LiquidityProvider_Options,
-    LiquidityProvider_Spot
+    LiquidityProvider_Spot,
+    System_Entitlements
 }

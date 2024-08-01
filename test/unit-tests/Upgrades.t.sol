@@ -11,13 +11,11 @@ import {Unauthorized} from "../../src/config/errors.sol";
 import {MockUpgrade} from "../mocks/MockUpgrade.sol";
 
 contract UpgradesTest is Test {
-    address public constant SANCTIONS_ADDR = address(0xCCCC);
-
     RolesAuthority public rolesAuthority;
     RolesAuthority public rolesAuthorityImplementation;
 
     function setUp() public {
-        rolesAuthorityImplementation = new RolesAuthority(SANCTIONS_ADDR);
+        rolesAuthorityImplementation = new RolesAuthority(address(0xcc), address(0xff));
         bytes memory data = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
 
         rolesAuthority = RolesAuthority(address(new RolesAuthorityProxy(address(rolesAuthorityImplementation), data)));

@@ -8,6 +8,7 @@ import {RolesAuthorityProxy} from "../../src/core/RolesAuthorityProxy.sol";
 import {Role} from "../../src/config/enums.sol";
 
 import {MockSanctions} from "../mocks/MockSanctions.sol";
+import {MockMessenger} from "../mocks/MockMessenger.sol";
 
 /**
  * helper contract with shared logic for fixtures to inherit
@@ -15,6 +16,7 @@ import {MockSanctions} from "../mocks/MockSanctions.sol";
 abstract contract BaseFixture is Test {
     RolesAuthority public rolesAuthority;
     MockSanctions internal sanctions;
+    MockMessenger internal messenger;
 
     Role internal role;
 
@@ -27,6 +29,9 @@ abstract contract BaseFixture is Test {
     address internal constant TARGET = address(0xCAFE);
 
     bytes4 internal constant FUNCTION_SIG = bytes4(0xBEEFCAFE);
+
+    event Broadcast(bytes payload);
+    event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
 
     constructor() {
         charlie = address(0xcccc);
@@ -42,11 +47,15 @@ abstract contract BaseFixture is Test {
         vm.label(TARGET, "Target");
 
         sanctions = new MockSanctions();
+        messenger = new MockMessenger();
 
-        address implementation = address(new RolesAuthority(address(sanctions)));
-        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, address(this));
+        address implementation = address(new RolesAuthority(address(sanctions), address(messenger)));
+        bytes memory initData = abi.encodeWithSelector(RolesAuthority.initialize.selector, charlie);
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);
+
+        vm.prank(charlie);
+        rolesAuthority.setUserRole(address(this), Role.System_FundAdmin, true);
 
         // make sure timestamp is not 0
         vm.warp(0xffff);

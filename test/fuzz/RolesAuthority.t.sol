@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {BaseFixture} from "../fixtures/BaseFixture.t.sol";
 
 import {Role} from "../../src/config/enums.sol";
+import {Unauthorized} from "../../src/config/errors.sol";
 
 contract RolesAuthorityTest is BaseFixture {
     function setUp() public {
@@ -11,7 +12,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetRoles(address _user, uint8 _role) public {
-        vm.assume(_role < 22);
+        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
         vm.assume(_user != address(0));
 
         assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
@@ -24,7 +25,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetRoleCapabilities(uint8 _role, address _target, bytes4 _functionSig) public {
-        vm.assume(_role < 22);
+        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
 
         assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
 
@@ -46,7 +47,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testCanCallWithAuthorizedRole(address _user, uint8 _role, address _target, bytes4 _functionSig) public {
-        vm.assume(_role < 22);
+        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
         vm.assume(_user != address(0));
 
         assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
@@ -77,5 +78,20 @@ contract RolesAuthorityTest is BaseFixture {
 
         rolesAuthority.setPublicCapability(target, functionSig, false);
         assertFalse(rolesAuthority.canCall(user, target, functionSig));
+    }
+
+    function testSetUserRolesBatchRevertsOnSystemRole(uint8 _role) public {
+        vm.assume(_role > uint8(Role.Investor_Reserve5) && _role < 22);
+
+        address[] memory users = new address[](1);
+        Role[] memory roles = new Role[](1);
+        bool[] memory enabled = new bool[](1);
+
+        users[0] = USER;
+        roles[0] = Role(_role);
+        enabled[0] = true;
+
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }
 }

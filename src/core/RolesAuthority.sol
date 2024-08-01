@@ -5,6 +5,7 @@ import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 
 import {IAuthority} from "../interfaces/IAuthority.sol";
+import {IAxelarMessenger} from "../interfaces/IAxelarMessenger.sol";
 import {ISanctions} from "../interfaces/ISanctions.sol";
 
 import "../config/enums.sol";
@@ -20,6 +21,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     ISanctions public immutable sanctions;
+    IAxelarMessenger public immutable messenger;
 
     /*///////////////////////////////////////////////////////////////
                          State Variables V1
@@ -47,10 +49,11 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _sanctions) {
+    constructor(address _sanctions, address _messenger) {
         if (_sanctions == address(0)) revert BadAddress();
 
         sanctions = ISanctions(_sanctions);
+        messenger = IAxelarMessenger(_messenger);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -105,12 +108,16 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                    ROLE CAPABILITY CONFIGURATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _isOwner() internal view {
+    function _assertOwner() internal view {
         if (msg.sender != owner) revert Unauthorized();
     }
 
+    function _assertFundAdmin() internal view {
+        if (!doesUserHaveRole(msg.sender, Role.System_FundAdmin)) revert Unauthorized();
+    }
+
     function setPublicCapability(address target, bytes4 functionSig, bool enabled) public virtual {
-        _isOwner();
+        _assertFundAdmin();
 
         isCapabilityPublic[target][functionSig] = enabled;
 
@@ -118,7 +125,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
-        _isOwner();
+        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
 
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
@@ -133,9 +140,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                        USER ROLE ASSIGNMENT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function setUserRole(address user, Role role, bool enabled) public virtual {
-        _isOwner();
-
+    function _setUserRole(address user, Role role, bool enabled) internal virtual {
         if (enabled) {
             getUserRoles[user] |= bytes32(1 << uint8(role));
         } else {
@@ -145,30 +150,61 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         emit UserRoleUpdated(user, uint8(role), enabled);
     }
 
+    function setUserRole(address user, Role role, bool enabled) external virtual {
+        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
+
+        _setUserRole(user, role, enabled);
+
+        if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
+    }
+
+    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+        _assertFundAdmin();
+
+        uint256 length = users.length;
+        if (length == 0 || length != roles.length || length != enabled.length) revert InvalidArrayLength();
+
+        for (uint256 i; i < length;) {
+            if (uint8(roles[i]) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
+
+            _setUserRole(users[i], roles[i], enabled[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
+    }
+
     /*//////////////////////////////////////////////////////////////
                             PAUSE LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Pauses whitelist
+     * @notice Pauses
      * @dev reverts on any check of permissions preventing any movement of funds
      *      between vault, auction, and option protocol
      */
     function pause() public {
-        _isOwner();
+        _assertFundAdmin();
 
         _paused = true;
         emit Paused(msg.sender);
+
+        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
     }
 
     /**
-     * @notice Unpauses whitelist
+     * @notice Unpauses
      */
     function unpause() public {
-        _isOwner();
+        _assertOwner();
 
         _paused = false;
         emit Unpaused(msg.sender);
+
+        // Not broadcasting, each chain will be unpaused individually
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -176,7 +212,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     //////////////////////////////////////////////////////////////*/
 
     function transferOwnership(address newOwner) public {
-        _isOwner();
+        _assertOwner();
 
         owner = newOwner;
 
@@ -192,6 +228,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
      *
      */
     function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
-        _isOwner();
+        _assertOwner();
     }
 }
