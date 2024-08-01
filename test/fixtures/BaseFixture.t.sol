@@ -30,6 +30,9 @@ abstract contract BaseFixture is Test {
 
     bytes4 internal constant FUNCTION_SIG = bytes4(0xBEEFCAFE);
 
+    event Broadcast(bytes payload);
+    event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
+
     constructor() {
         charlie = address(0xcccc);
         vm.label(charlie, "Charlie");

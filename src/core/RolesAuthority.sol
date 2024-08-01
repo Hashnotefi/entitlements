@@ -168,7 +168,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         if (length == 0 || length != roles.length || length != enabled.length) revert InvalidArrayLength();
 
         for (uint256 i; i < length;) {
-            if (uint8(roles[i]) <= uint8(Role.Investor_Reserve5)) revert Unauthorized();
+            if (uint8(roles[i]) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
 
             _setUserRole(users[i], roles[i], enabled[i]);
 

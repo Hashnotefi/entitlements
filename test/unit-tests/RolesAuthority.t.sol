@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {RolesAuthority, BaseFixture} from "../fixtures/BaseFixture.t.sol";
 
 import {Role} from "../../src/config/enums.sol";
-import {Unauthorized} from "../../src/config/errors.sol";
+import {Unauthorized, InvalidArrayLength} from "../../src/config/errors.sol";
 
 contract RolesAuthorityTransferOwnershipTest is BaseFixture {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
@@ -28,40 +28,13 @@ contract RolesAuthorityTransferOwnershipTest is BaseFixture {
     }
 }
 
-contract RolesAuthorityTest is BaseFixture {
-    event Broadcast(bytes payload);
-
-    event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
-
+contract RolesAuthorityRoleCapabilityTest is BaseFixture {
     event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
 
     event RoleCapabilityUpdated(uint8 indexed role, address indexed target, bytes4 indexed functionSig, bool enabled);
 
     function setUp() public {
         role = Role(0);
-    }
-
-    function testSetRoles() public {
-        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
-
-        vm.expectEmit(true, true, true, true);
-        emit UserRoleUpdated(USER, uint8(role), true);
-
-        rolesAuthority.setUserRole(USER, role, true);
-        assertTrue(rolesAuthority.doesUserHaveRole(USER, role));
-
-        vm.expectEmit(true, true, true, true);
-        emit UserRoleUpdated(USER, uint8(role), false);
-
-        rolesAuthority.setUserRole(USER, role, false);
-        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
-    }
-
-    function testSetRoleBroadcasts() public {
-        vm.expectEmit(true, true, true, true);
-        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRole.selector, USER, uint8(role), true));
-
-        rolesAuthority.setUserRole(USER, role, true);
     }
 
     function testSetRoleCapabilities() public {
@@ -96,25 +69,6 @@ contract RolesAuthorityTest is BaseFixture {
         assertFalse(rolesAuthority.isCapabilityPublic(TARGET, FUNCTION_SIG));
     }
 
-    function testCanCallWithAuthorizedRole() public {
-        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-
-        rolesAuthority.setUserRole(USER, role, true);
-        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-
-        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
-        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-
-        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, false);
-        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-
-        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
-        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-
-        rolesAuthority.setUserRole(USER, role, false);
-        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
-    }
-
     function testCanCallPublicCapability() public {
         assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
 
@@ -123,6 +77,19 @@ contract RolesAuthorityTest is BaseFixture {
 
         rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, false);
         assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+    }
+
+    function testFundAdminCannotSetFundAdminCapability() public {
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setRoleCapability(Role.System_FundAdmin, TARGET, FUNCTION_SIG, true);
+    }
+
+    function testOwnerCanSetFundAdminCapability() public {
+        vm.expectEmit(true, true, true, true);
+        emit RoleCapabilityUpdated(uint8(Role.System_FundAdmin), TARGET, FUNCTION_SIG, true);
+
+        vm.prank(charlie);
+        rolesAuthority.setRoleCapability(Role.System_FundAdmin, TARGET, FUNCTION_SIG, true);
     }
 
     function testCannotSetRoleCapabilityNotOwner() public {
@@ -137,9 +104,168 @@ contract RolesAuthorityTest is BaseFixture {
         rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
     }
 
+    function testCanCallWithAuthorizedRole() public {
+        // give role and check that user can't call without capability
+        rolesAuthority.setUserRole(USER, role, true);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+
+        // give capability and check that user can call
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+
+        // remove capability and check that user can't call anymore
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, false);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+    }
+}
+
+contract RolesAuthoritySetRoleTest is BaseFixture {
+    function setUp() public {
+        role = Role(0);
+    }
+
+    function testSetRoles() public {
+        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
+
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(USER, uint8(role), true);
+
+        rolesAuthority.setUserRole(USER, role, true);
+        assertTrue(rolesAuthority.doesUserHaveRole(USER, role));
+
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(USER, uint8(role), false);
+
+        rolesAuthority.setUserRole(USER, role, false);
+        assertFalse(rolesAuthority.doesUserHaveRole(USER, role));
+    }
+
+    function testBroadcasts() public {
+        vm.expectEmit(true, true, true, true);
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRole.selector, USER, uint8(role), true));
+
+        vm.recordLogs();
+
+        rolesAuthority.setUserRole(USER, role, true);
+
+        assertEq(vm.getRecordedLogs().length, 2);
+    }
+
+    function testDoesNotCallBroadcastIfRoleIsSystem() public {
+        role = Role.Custodian_Centralized;
+        assertGt(uint8(role), uint8(Role.Investor_Reserve5));
+
+        vm.expectEmit(false, false, false, false);
+        emit UserRoleUpdated(USER, uint8(role), true);
+
+        vm.recordLogs();
+
+        rolesAuthority.setUserRole(USER, role, true);
+
+        assertEq(vm.getRecordedLogs().length, 1);
+    }
+
+    function testOwnerCanAddFundAdmin() public {
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(USER, uint8(Role.System_FundAdmin), true);
+
+        vm.prank(charlie);
+        rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
+    }
+
+    function testCanCallWithAuthorizedRole() public {
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+
+        // give role and check that user can't call without capability
+        rolesAuthority.setUserRole(USER, role, true);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+
+        // give capability and check that user can call
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+        assertTrue(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+
+        // check that if role is revoked, user can't call it anymore
+        rolesAuthority.setUserRole(USER, role, false);
+        assertFalse(rolesAuthority.canCall(USER, TARGET, FUNCTION_SIG));
+    }
+
     function testCannotSetUserRoleNotOwner() public {
         vm.prank(address(0xAAAA));
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.setUserRole(USER, role, true);
+    }
+
+    function testFundAdminCannotAddFundAdmin() public {
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
+    }
+}
+
+contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
+    address[] users;
+    Role[] roles;
+    bool[] enabled;
+
+    function setUp() public {
+        users = new address[](2);
+        roles = new Role[](2);
+        enabled = new bool[](2);
+
+        users[0] = address(0x1111);
+        roles[0] = Role(0);
+        enabled[0] = true;
+
+        users[1] = address(0x1111);
+        roles[1] = Role(1);
+        enabled[1] = true;
+    }
+
+    function testSetUserRoleBatch() public {
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(users[0], uint8(roles[0]), true);
+
+        vm.expectEmit(true, true, true, true);
+        emit UserRoleUpdated(users[1], uint8(roles[1]), true);
+
+        vm.recordLogs();
+
+        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+
+        assertTrue(rolesAuthority.doesUserHaveRole(users[0], roles[0]));
+        assertTrue(rolesAuthority.doesUserHaveRole(users[1], roles[1]));
+
+        // only role updated logs should be emitted
+        assertEq(vm.getRecordedLogs().length, 2);
+    }
+
+    function testBroadcasts() public {
+        vm.expectEmit(true, true, true, true);
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled, true));
+
+        vm.recordLogs();
+
+        rolesAuthority.setUserRoleBatch(users, roles, enabled, true);
+
+        // logs + broadcast should be emitted
+        assertEq(vm.getRecordedLogs().length, 3);
+    }
+
+    function testRevertsIfArrayLengthsDoNotMatch() public {
+        users = new address[](1);
+
+        vm.expectRevert(InvalidArrayLength.selector);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+    }
+
+    function testCannotCallNotFundAdmin() public {
+        vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
+    }
+
+    function testCannotCallByOwner() public {
+        vm.prank(charlie);
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled, false);
     }
 }
