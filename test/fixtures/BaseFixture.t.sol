@@ -3,11 +3,11 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {Sanctions} from "../../src/core/Sanctions.sol";
 import {RolesAuthority} from "../../src/core/RolesAuthority.sol";
 import {RolesAuthorityProxy} from "../../src/core/RolesAuthorityProxy.sol";
 import {Role} from "../../src/config/enums.sol";
 
-import {MockSanctions} from "../mocks/MockSanctions.sol";
 import {MockMessenger} from "../mocks/MockMessenger.sol";
 
 /**
@@ -15,7 +15,7 @@ import {MockMessenger} from "../mocks/MockMessenger.sol";
  */
 abstract contract BaseFixture is Test {
     RolesAuthority public rolesAuthority;
-    MockSanctions internal sanctions;
+    Sanctions internal sanctions;
     MockMessenger internal messenger;
 
     Role internal role;
@@ -46,7 +46,7 @@ abstract contract BaseFixture is Test {
         vm.label(USER, "User");
         vm.label(TARGET, "Target");
 
-        sanctions = new MockSanctions();
+        sanctions = new Sanctions(address(this));
         messenger = new MockMessenger();
 
         address implementation = address(new RolesAuthority(address(sanctions), address(messenger)));

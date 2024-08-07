@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
+import {RolesUtil} from "../libraries/RolesUtil.sol";
 
 import {IAuthority} from "../interfaces/IAuthority.sol";
 import {IAxelarMessenger} from "../interfaces/IAxelarMessenger.sol";
@@ -16,6 +17,7 @@ import "../config/errors.sol";
 /// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-roles/blob/master/src/roles.sol)
 contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
+    using RolesUtil for bytes32;
     /*///////////////////////////////////////////////////////////////
                          Immutables
     //////////////////////////////////////////////////////////////*/
@@ -83,13 +85,13 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
             if (sanctions.isSanctioned(user)) return false;
         }
 
-        return (uint256(getUserRoles[user]) >> uint8(role)) & 1 != 0;
+        return getUserRoles[user].doesHaveRole(role);
     }
 
     function doesRoleHaveCapability(Role role, address target, bytes4 functionSig) public view virtual returns (bool) {
         if (_paused) revert Unauthorized();
 
-        return (uint256(getRolesWithCapability[target][functionSig]) >> uint8(role)) & 1 != 0;
+        return getRolesWithCapability[target][functionSig].doesHaveCapability(role);
     }
 
     /*//////////////////////////////////////////////////////////////

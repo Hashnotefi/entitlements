@@ -50,7 +50,13 @@ echo ""
 #   exit 0
 # fi
 
-ARGS="--rpc-url https://$network.infura.io/v3/$INFURA_API_KEY"
+if [ -z "$RPC_URL" ]
+then
+  ARGS="--rpc-url https://$network.infura.io/v3/$INFURA_API_KEY"
+else
+  ARGS="--rpc-url $RPC_URL"
+fi
+
 ARGS="$ARGS --private-key $PRIVATE_KEY"
 
 if [ "$resume" = "y" ]
@@ -66,6 +72,16 @@ fi
 if [ "$verify" = "y" ]
 then
   ARGS="$ARGS --verify"
+
+  if [ "$verifier" != "" ]
+  then
+    ARGS="$ARGS --verifier $verifier"
+  fi
+
+  if [ "$verifierUrl" != "" ]
+  then
+    ARGS="$ARGS --verifier-url $verifierUrl"
+  fi
 fi
 
 echo "Running script: $1"
