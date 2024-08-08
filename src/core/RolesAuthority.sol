@@ -118,8 +118,12 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         if (!doesUserHaveRole(msg.sender, Role.System_FundAdmin)) revert Unauthorized();
     }
 
+    function _assertPermissions() internal view {
+        if (!canCall(msg.sender, address(this), msg.sig)) revert Unauthorized();
+    }
+
     function setPublicCapability(address target, bytes4 functionSig, bool enabled) public virtual {
-        _assertFundAdmin();
+        _assertPermissions();
 
         isCapabilityPublic[target][functionSig] = enabled;
 
@@ -127,7 +131,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
+        role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
 
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
@@ -153,7 +157,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setUserRole(address user, Role role, bool enabled) external virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertFundAdmin();
+        role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
 
         _setUserRole(user, role, enabled);
 
@@ -161,7 +165,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
-        _assertFundAdmin();
+        _assertPermissions();
 
         uint256 length = users.length;
         if (length == 0 || length != roles.length || length != enabled.length) revert InvalidArrayLength();

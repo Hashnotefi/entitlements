@@ -54,8 +54,22 @@ abstract contract BaseFixture is Test {
         address rolesAuthorityProxy = address(new RolesAuthorityProxy(implementation, initData));
         rolesAuthority = RolesAuthority(rolesAuthorityProxy);
 
-        vm.prank(charlie);
+        // grant fund admin capabilities
+        vm.startPrank(charlie);
         rolesAuthority.setUserRole(address(this), Role.System_FundAdmin, true);
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRole.selector, true
+        );
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRoleBatch.selector, true
+        );
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setRoleCapability.selector, true
+        );
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setPublicCapability.selector, true
+        );
+        vm.stopPrank();
 
         // make sure timestamp is not 0
         vm.warp(0xffff);
