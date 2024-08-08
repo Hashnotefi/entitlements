@@ -12,7 +12,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetRoles(address _user, uint8 _role) public {
-        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
+        vm.assume(_role < 23 && _role != uint8(Role.System_FundAdmin));
         vm.assume(_user != address(0));
 
         assertFalse(rolesAuthority.doesUserHaveRole(_user, Role(_role)));
@@ -25,7 +25,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetRoleCapabilities(uint8 _role, address _target, bytes4 _functionSig) public {
-        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
+        vm.assume(_role < 23 && _role != uint8(Role.System_FundAdmin));
 
         assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
 
@@ -47,7 +47,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testCanCallWithAuthorizedRole(address _user, uint8 _role, address _target, bytes4 _functionSig) public {
-        vm.assume(_role < 22 && _role != uint8(Role.System_FundAdmin));
+        vm.assume(_role < 23 && _role != uint8(Role.System_FundAdmin));
         vm.assume(_user != address(0));
 
         assertFalse(rolesAuthority.canCall(_user, _target, _functionSig));
@@ -81,7 +81,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetUserRolesBatchRevertsOnSystemRole(uint8 _role) public {
-        vm.assume(_role > uint8(Role.Investor_Reserve5) && _role < 22);
+        vm.assume(_role > uint8(Role.Investor_Reserve5) && _role < 23);
 
         address[] memory users = new address[](1);
         Role[] memory roles = new Role[](1);

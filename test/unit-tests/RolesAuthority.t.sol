@@ -98,8 +98,28 @@ contract RolesAuthorityRoleCapabilityTest is BaseFixture {
         rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
     }
 
+    function testCannotSetRoleCapabilityNoCapability() public {
+        vm.prank(charlie);
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setRoleCapability.selector, false
+        );
+
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setRoleCapability(role, TARGET, FUNCTION_SIG, true);
+    }
+
     function testCannotSetPublicCapabilityNotOwner() public {
         vm.prank(address(0xAAAA));
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
+    }
+
+    function testCannotSetPublicCapabilityNoCapability() public {
+        vm.prank(charlie);
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setPublicCapability.selector, false
+        );
+
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.setPublicCapability(TARGET, FUNCTION_SIG, true);
     }
@@ -199,6 +219,16 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
     }
+
+    function testCannotSetUserRoleNoCapability() public {
+        vm.prank(charlie);
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRole.selector, false
+        );
+
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRole(USER, role, true);
+    }
 }
 
 contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
@@ -267,6 +297,16 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
 
     function testCannotCallByOwner() public {
         vm.prank(charlie);
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRoleBatch(users, roles, enabled);
+    }
+
+    function testCannotSetUserRoleBatchNoCapability() public {
+        vm.prank(charlie);
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRoleBatch.selector, false
+        );
+
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.setUserRoleBatch(users, roles, enabled);
     }

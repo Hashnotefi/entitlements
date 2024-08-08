@@ -24,5 +24,6 @@ enum Role {
     System_MarginEngine,
     LiquidityProvider_Options,
     LiquidityProvider_Spot,
-    System_Entitlements
+    System_Entitlements,
+    System_Messenger
 }
