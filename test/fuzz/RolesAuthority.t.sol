@@ -25,7 +25,7 @@ contract RolesAuthorityTest is BaseFixture {
     }
 
     function testSetRoleCapabilities(uint8 _role, address _target, bytes4 _functionSig) public {
-        vm.assume(_role <= uint8(Role.Investor_Reserve5));
+        vm.assume(_role < 23 && _role != uint8(Role.System_FundAdmin));
 
         assertFalse(rolesAuthority.doesRoleHaveCapability(Role(_role), _target, _functionSig));
 
