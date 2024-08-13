@@ -39,11 +39,9 @@ contract ConfigureCapabilities is Script {
         authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleBatchSelector, true);
         authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleBatchBroadcastSelector, true);
 
-
         authority.setRoleCapability(Role.System_Messenger, address(authority), pauseSelector, true);
         authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleSelector, true);
         authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleBatchSelector, true);
-
     }
 
     function _usyc(RolesAuthority authority) internal {
