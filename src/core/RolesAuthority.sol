@@ -159,9 +159,11 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setUserRoleBroadcast(address user, Role role, bool enabled) external virtual {
+        if (address(messenger) == address(0) && uint8(role) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
+
         setUserRole(user, role, enabled);
 
-        if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
+        messenger.broadcast(abi.encodeWithSelector(this.setUserRole.selector, user, role, enabled));
     }
 
     function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) public virtual {
@@ -182,9 +184,11 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setUserRoleBatchBroadcast(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+        if (address(messenger) == address(0)) revert Unauthorized();
+
         setUserRoleBatch(users, roles, enabled);
 
-        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
+        messenger.broadcast(abi.encodeWithSelector(this.setUserRoleBatch.selector, users, roles, enabled));
     }
 
     /*//////////////////////////////////////////////////////////////
