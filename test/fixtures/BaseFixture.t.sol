@@ -61,7 +61,13 @@ abstract contract BaseFixture is Test {
             Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRole.selector, true
         );
         rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRoleBroadcast.selector, true
+        );
+        rolesAuthority.setRoleCapability(
             Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRoleBatch.selector, true
+        );
+        rolesAuthority.setRoleCapability(
+            Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setUserRoleBatchBroadcast.selector, true
         );
         rolesAuthority.setRoleCapability(
             Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setRoleCapability.selector, true
@@ -69,6 +75,7 @@ abstract contract BaseFixture is Test {
         rolesAuthority.setRoleCapability(
             Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.setPublicCapability.selector, true
         );
+        rolesAuthority.setRoleCapability(Role.System_FundAdmin, address(rolesAuthority), rolesAuthority.pause.selector, true);
         vm.stopPrank();
 
         // make sure timestamp is not 0

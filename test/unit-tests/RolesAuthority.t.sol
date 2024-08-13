@@ -162,11 +162,11 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
 
     function testBroadcasts() public {
         vm.expectEmit(true, true, true, true);
-        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRole.selector, USER, uint8(role), true));
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBroadcast.selector, USER, uint8(role), true));
 
         vm.recordLogs();
 
-        rolesAuthority.setUserRole(USER, role, true);
+        rolesAuthority.setUserRoleBroadcast(USER, role, true);
 
         assertEq(vm.getRecordedLogs().length, 2);
     }
@@ -270,13 +270,13 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
         assertEq(vm.getRecordedLogs().length, 3);
     }
 
-    function testBroadcasts() public {
+    function testBatchBroadcasts() public {
         vm.expectEmit(true, true, true, true);
-        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled));
+        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatchBroadcast.selector, users, roles, enabled));
 
         vm.recordLogs();
 
-        rolesAuthority.setUserRoleBatch(users, roles, enabled);
+        rolesAuthority.setUserRoleBatchBroadcast(users, roles, enabled);
 
         // logs + broadcast should be emitted
         assertEq(vm.getRecordedLogs().length, 3);

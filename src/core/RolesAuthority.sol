@@ -114,10 +114,6 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         if (msg.sender != owner) revert Unauthorized();
     }
 
-    function _assertFundAdmin() internal view {
-        if (!doesUserHaveRole(msg.sender, Role.System_FundAdmin)) revert Unauthorized();
-    }
-
     function _assertPermissions() internal view {
         if (!canCall(msg.sender, address(this), msg.sig)) revert Unauthorized();
     }
@@ -156,15 +152,19 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         emit UserRoleUpdated(user, uint8(role), enabled);
     }
 
-    function setUserRole(address user, Role role, bool enabled) external virtual {
+    function setUserRole(address user, Role role, bool enabled) public virtual {
         role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
 
         _setUserRole(user, role, enabled);
+    }
+
+    function setUserRoleBroadcast(address user, Role role, bool enabled) external virtual {
+        setUserRole(user, role, enabled);
 
         if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
     }
 
-    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) public virtual {
         _assertPermissions();
 
         uint256 length = users.length;
@@ -179,6 +179,10 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                 ++i;
             }
         }
+    }
+
+    function setUserRoleBatchBroadcast(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+        setUserRoleBatch(users, roles, enabled);
 
         if (address(messenger) != address(0)) messenger.broadcast(msg.data);
     }
@@ -193,7 +197,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
      *      between vault, auction, and option protocol
      */
     function pause() public {
-        _assertFundAdmin();
+        _assertPermissions();
 
         _paused = true;
         emit Paused(msg.sender);
