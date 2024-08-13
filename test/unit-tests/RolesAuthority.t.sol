@@ -171,20 +171,6 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
         assertEq(vm.getRecordedLogs().length, 2);
     }
 
-    function testDoesNotCallBroadcastIfRoleIsSystem() public {
-        role = Role.Custodian_Centralized;
-        assertGt(uint8(role), uint8(Role.Investor_Reserve5));
-
-        vm.expectEmit(false, false, false, false);
-        emit UserRoleUpdated(USER, uint8(role), true);
-
-        vm.recordLogs();
-
-        rolesAuthority.setUserRole(USER, role, true);
-
-        assertEq(vm.getRecordedLogs().length, 1);
-    }
-
     function testOwnerCanAddFundAdmin() public {
         vm.expectEmit(true, true, true, true);
         emit UserRoleUpdated(USER, uint8(Role.System_FundAdmin), true);

@@ -35,13 +35,15 @@ contract ConfigureCapabilities is Script {
         authority.setUserRole(vm.envAddress("MessengerEntitlements"), Role.System_Messenger, true);
         authority.setRoleCapability(Role.System_FundAdmin, address(authority), pauseSelector, true);
         authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleSelector, true);
+        authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleBroadcastSelector, true);
         authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleBatchSelector, true);
+        authority.setRoleCapability(Role.System_FundAdmin, address(authority), setUserRoleBatchBroadcastSelector, true);
+
 
         authority.setRoleCapability(Role.System_Messenger, address(authority), pauseSelector, true);
         authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleSelector, true);
-        authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleBroadcastSelector, true);
         authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleBatchSelector, true);
-        authority.setRoleCapability(Role.System_Messenger, address(authority), setUserRoleBatchBroadcastSelector, true);
+
     }
 
     function _usyc(RolesAuthority authority) internal {

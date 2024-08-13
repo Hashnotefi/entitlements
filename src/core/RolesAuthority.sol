@@ -127,7 +127,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setRoleCapability(Role role, address target, bytes4 functionSig, bool enabled) public virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
+        uint8(role) > uint8(Role.Investor_Reserve5) ? _assertOwner() : _assertPermissions();
 
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << uint8(role));
@@ -153,13 +153,13 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
     }
 
     function setUserRole(address user, Role role, bool enabled) public virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
+        uint8(role) > uint8(Role.Investor_Reserve5) ? _assertOwner() : _assertPermissions();
 
         _setUserRole(user, role, enabled);
     }
 
     function setUserRoleBroadcast(address user, Role role, bool enabled) external virtual {
-        if (address(messenger) == address(0) && uint8(role) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
+        if (address(messenger) == address(0) || uint8(role) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
 
         setUserRole(user, role, enabled);
 
