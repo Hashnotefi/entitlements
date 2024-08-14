@@ -206,6 +206,17 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
         rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
     }
 
+    function testPermissionedCannotAddFundAdmin() public {
+        rolesAuthority.setUserRole(bob, Role.System_Messenger, true);
+        rolesAuthority.setRoleCapability(
+            Role.System_Messenger, address(rolesAuthority), rolesAuthority.setUserRole.selector, true
+        );
+
+        vm.prank(bob);
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
+    }
+
     function testCannotSetUserRoleNoCapability() public {
         vm.prank(charlie);
         rolesAuthority.setRoleCapability(
