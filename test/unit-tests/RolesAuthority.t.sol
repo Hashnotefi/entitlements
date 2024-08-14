@@ -166,23 +166,9 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
 
         vm.recordLogs();
 
-        rolesAuthority.setUserRole(USER, role, true);
+        rolesAuthority.setUserRoleBroadcast(USER, role, true);
 
         assertEq(vm.getRecordedLogs().length, 2);
-    }
-
-    function testDoesNotCallBroadcastIfRoleIsSystem() public {
-        role = Role.Custodian_Centralized;
-        assertGt(uint8(role), uint8(Role.Investor_Reserve5));
-
-        vm.expectEmit(false, false, false, false);
-        emit UserRoleUpdated(USER, uint8(role), true);
-
-        vm.recordLogs();
-
-        rolesAuthority.setUserRole(USER, role, true);
-
-        assertEq(vm.getRecordedLogs().length, 1);
     }
 
     function testOwnerCanAddFundAdmin() public {
@@ -216,6 +202,17 @@ contract RolesAuthoritySetRoleTest is BaseFixture {
     }
 
     function testFundAdminCannotAddFundAdmin() public {
+        vm.expectRevert(Unauthorized.selector);
+        rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
+    }
+
+    function testPermissionedCannotAddFundAdmin() public {
+        rolesAuthority.setUserRole(bob, Role.System_Messenger, true);
+        rolesAuthority.setRoleCapability(
+            Role.System_Messenger, address(rolesAuthority), rolesAuthority.setUserRole.selector, true
+        );
+
+        vm.prank(bob);
         vm.expectRevert(Unauthorized.selector);
         rolesAuthority.setUserRole(USER, Role.System_FundAdmin, true);
     }
@@ -257,9 +254,6 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
         vm.expectEmit(true, true, true, true);
         emit UserRoleUpdated(users[1], uint8(roles[1]), true);
 
-        vm.expectEmit(true, true, true, true);
-        emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled));
-
         vm.recordLogs();
 
         rolesAuthority.setUserRoleBatch(users, roles, enabled);
@@ -267,16 +261,16 @@ contract RolesAuthoritySetUserRoleBatchTest is BaseFixture {
         assertTrue(rolesAuthority.doesUserHaveRole(users[0], roles[0]));
         assertTrue(rolesAuthority.doesUserHaveRole(users[1], roles[1]));
 
-        assertEq(vm.getRecordedLogs().length, 3);
+        assertEq(vm.getRecordedLogs().length, 2);
     }
 
-    function testBroadcasts() public {
+    function testBatchBroadcasts() public {
         vm.expectEmit(true, true, true, true);
         emit Broadcast(abi.encodeWithSelector(RolesAuthority.setUserRoleBatch.selector, users, roles, enabled));
 
         vm.recordLogs();
 
-        rolesAuthority.setUserRoleBatch(users, roles, enabled);
+        rolesAuthority.setUserRoleBatchBroadcast(users, roles, enabled);
 
         // logs + broadcast should be emitted
         assertEq(vm.getRecordedLogs().length, 3);

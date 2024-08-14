@@ -156,15 +156,23 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
         emit UserRoleUpdated(user, uint8(role), enabled);
     }
 
-    function setUserRole(address user, Role role, bool enabled) external virtual {
-        role == Role.System_FundAdmin ? _assertOwner() : _assertPermissions();
+    function setUserRole(address user, Role role, bool enabled) public virtual {
+        if (role == Role.System_FundAdmin) _assertOwner();
+        else if (uint8(role) > uint8(Role.Investor_Reserve5)) _assertFundAdmin();
+        else _assertPermissions();
 
         _setUserRole(user, role, enabled);
-
-        if (address(messenger) != address(0) && uint8(role) <= uint8(Role.Investor_Reserve5)) messenger.broadcast(msg.data);
     }
 
-    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+    function setUserRoleBroadcast(address user, Role role, bool enabled) external virtual {
+        if (address(messenger) == address(0) || uint8(role) > uint8(Role.Investor_Reserve5)) revert Unauthorized();
+
+        setUserRole(user, role, enabled);
+
+        messenger.broadcast(abi.encodeWithSelector(this.setUserRole.selector, user, role, enabled));
+    }
+
+    function setUserRoleBatch(address[] memory users, Role[] memory roles, bool[] memory enabled) public virtual {
         _assertPermissions();
 
         uint256 length = users.length;
@@ -179,8 +187,14 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
                 ++i;
             }
         }
+    }
 
-        if (address(messenger) != address(0)) messenger.broadcast(msg.data);
+    function setUserRoleBatchBroadcast(address[] memory users, Role[] memory roles, bool[] memory enabled) external virtual {
+        if (address(messenger) == address(0)) revert Unauthorized();
+
+        setUserRoleBatch(users, roles, enabled);
+
+        messenger.broadcast(abi.encodeWithSelector(this.setUserRoleBatch.selector, users, roles, enabled));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -193,7 +207,7 @@ contract RolesAuthority is IAuthority, Initializable, UUPSUpgradeable {
      *      between vault, auction, and option protocol
      */
     function pause() public {
-        _assertFundAdmin();
+        _assertPermissions();
 
         _paused = true;
         emit Paused(msg.sender);
