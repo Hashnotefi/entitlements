@@ -57,7 +57,8 @@ else
   ARGS="--rpc-url $RPC_URL"
 fi
 
-ARGS="$ARGS --private-key $PRIVATE_KEY"
+# ARGS="$ARGS --private-key $PRIVATE_KEY"
+ARGS="$ARGS --account $ACCOUNT --sender $SENDER"
 
 if [ "$resume" = "y" ]
 then
