@@ -11,8 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+        with:
+          egress-policy: audit
+
       - name: Run Gas Comparison
-        uses: antoncoding/gas-diff-action@v1.2.0
+        uses: antoncoding/gas-diff-action@ad9d4b83618d2afb57171417293fc9e633caab00 # v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base_ref: ${{ github.base_ref }}
